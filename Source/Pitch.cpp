@@ -10,10 +10,9 @@ Pitch::Pitch(float midiPitch)
 	this->midiPitch = midiPitch;
 }
 
-Pitch::Pitch(const juce::MPENote& mpeNote)
+Pitch Pitch::fromFreqHz(float freqHz)
 {
-	float freq = mpeNote.getFrequencyInHertz();
-	midiPitch = 69 + (log2f(freq) - log2f(440)) * 12;
+	return Pitch(69.f + (log2f(freqHz) - log2f(440)) * 12.f);
 }
 
 Pitch::Pitch(const Pitch& pitch)

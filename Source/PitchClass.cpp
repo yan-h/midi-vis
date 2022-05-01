@@ -20,9 +20,15 @@ bool PitchClass::operator==(const PitchClass& pitchClass) const
 	return std::abs(this->midiPitchClass - pitchClass.midiPitchClass) < Pitch::epsilon;
 }
 
-bool PitchClass::containsPitch(const Pitch& pitch) const
+bool PitchClass::matchesPitch(const Pitch& pitch) const
 {
-	return PitchClass(pitch) == *this;
+	return matchesPitch(pitch, 0);
+}
+
+
+bool PitchClass::matchesPitch(const Pitch& pitch, float tolerance) const
+{
+	return std::abs(PitchClass(pitch).midiPitchClass - midiPitchClass) <= std::fmax(Pitch::epsilon, tolerance);
 }
 
 float PitchClass::getCents() const

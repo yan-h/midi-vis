@@ -9,8 +9,8 @@ class Pitch
 {
 public:
 	Pitch(float);
-	Pitch(const juce::MPENote&);
 	Pitch(const Pitch&);
+	static Pitch fromFreqHz(float);
 	bool operator==(const Pitch&) const;
 	bool operator<(const Pitch&) const;
 	float getMidiPitch() const;

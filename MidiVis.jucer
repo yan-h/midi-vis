@@ -2,9 +2,23 @@
 
 <JUCERPROJECT id="XYMwix" name="MidiVis" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              pluginFormats="buildVST3" pluginCharacteristicsValue="pluginProducesMidiOut,pluginWantsMidiIn">
+              pluginFormats="buildVST3" pluginCharacteristicsValue="pluginProducesMidiOut,pluginWantsMidiIn"
+              defines="JUCE_DISPLAY_SPLASH_SCREEN=0">
   <MAINGROUP id="g7Yr22" name="MidiVis">
     <GROUP id="{A1CD4CE2-C68C-6D5C-8F0A-E3E319E70620}" name="Source">
+      <FILE id="c7Yynp" name="Hash.h" compile="0" resource="0" file="Source/Hash.h"/>
+      <FILE id="W8ro1m" name="LogMessage.cpp" compile="1" resource="0" file="Source/LogMessage.cpp"/>
+      <FILE id="yZGRsx" name="LogMessage.h" compile="0" resource="0" file="Source/LogMessage.h"/>
+      <FILE id="ld8q0o" name="MidiNote.cpp" compile="1" resource="0" file="Source/MidiNote.cpp"/>
+      <FILE id="TynRVV" name="MidiNote.h" compile="0" resource="0" file="Source/MidiNote.h"/>
+      <FILE id="rPZ4yd" name="Pitch.cpp" compile="1" resource="0" file="Source/Pitch.cpp"/>
+      <FILE id="LVQHML" name="Pitch.h" compile="0" resource="0" file="Source/Pitch.h"/>
+      <FILE id="ccKNPK" name="PitchClass.cpp" compile="1" resource="0" file="Source/PitchClass.cpp"/>
+      <FILE id="POnwC1" name="PitchClass.h" compile="0" resource="0" file="Source/PitchClass.h"/>
+      <FILE id="IVMcbG" name="PitchClassTile.cpp" compile="1" resource="0"
+            file="Source/PitchClassTile.cpp"/>
+      <FILE id="iMMggb" name="PitchClassTile.h" compile="0" resource="0"
+            file="Source/PitchClassTile.h"/>
       <FILE id="IybGmX" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="qJh0ZQ" name="PluginProcessor.h" compile="0" resource="0"

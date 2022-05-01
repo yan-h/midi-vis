@@ -12,6 +12,7 @@ class PitchClassTile :
 {
 public:
 	PitchClassTile(const PitchClass& pitchClass);
+	PitchClassTile(int, int, float, float);
 	void paint(juce::Graphics& g) override;
 	void updatePitchIntensities(const std::map<Pitch, float>&);
 	void timerUpdate();

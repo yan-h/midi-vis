@@ -58,8 +58,12 @@ private:
 
     std::vector<std::unique_ptr<PitchClassTile>> tiles;
 
+    juce::CriticalSection mpeNotesLock;
     std::unordered_set<juce::MPENote, MPENoteHash> mpeNotes;
     std::map<Pitch, float> pitchIntensities;
 
     juce::MPEInstrument& mpeInstrument;
+
+    void updateNote(const juce::MPENote&);
+    static std::pair<int, int> octaveReducedFraction(int factor3, int factor5);
 };

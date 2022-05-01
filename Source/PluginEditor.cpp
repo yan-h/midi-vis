@@ -39,9 +39,11 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
 
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize(1600, 900);
+    setSize(1100, 900);
 
     int size = 80;
+    float semisFactor3 = 700;
+    float semisFactor5 = 400;
 
     for (int x = 0; x <= 10; x++)
     {
@@ -61,6 +63,14 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     startTimerHz(60);
 }
 
+std::pair<int, int> PluginEditor::octaveReducedFraction(int factor3, int factor5)
+{
+    int num = 1;
+    int denom = 1;
+
+    return std::pair<int, int>(0, 0);
+}
+
 PluginEditor::~PluginEditor()
 {
     mpeInstrument.removeListener(this);
@@ -68,6 +78,7 @@ PluginEditor::~PluginEditor()
 
 void PluginEditor::timerCallback()
 {
+    const juce::ScopedLock lock(mpeNotesLock);
     updateTiles();
     for (const std::unique_ptr<PitchClassTile>& pitchClassTile : tiles)
     {
@@ -83,28 +94,29 @@ void PluginEditor::handleLogMessage(const LogMessage* logMessage)
 
 void PluginEditor::noteAdded(juce::MPENote mpeNote)
 {
-    mpeNotes.insert(mpeNote);
+    updateNote(mpeNote);
 }
 
 void PluginEditor::notePressureChanged(juce::MPENote mpeNote)
 {
-    mpeNotes.insert(mpeNote);
+    updateNote(mpeNote);
 }
 
 void PluginEditor::notePitchbendChanged(juce::MPENote mpeNote)
 {
-    mpeNotes.insert(mpeNote);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteTimbreChanged(juce::MPENote mpeNote)
 {
-    mpeNotes.insert(mpeNote);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteKeyStateChanged(juce::MPENote mpeNote)
 {
-    mpeNotes.insert(mpeNote);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteReleased(juce::MPENote mpeNote)
 {
+    const juce::ScopedLock lock(mpeNotesLock);
     mpeNotes.erase(mpeNote);
 }
 void PluginEditor::zoneLayoutChanged()
@@ -112,16 +124,27 @@ void PluginEditor::zoneLayoutChanged()
 
 }
 
+void PluginEditor::updateNote(const juce::MPENote& mpeNote)
+{
+    const juce::ScopedLock lock(mpeNotesLock);
+    mpeNotes.erase(mpeNote);
+    mpeNotes.insert(mpeNote);
+}
+
 void PluginEditor::updateTiles()
 {
+    // Set of all held pitches
     std::unordered_set<Pitch, PitchHash> pitches = std::unordered_set<Pitch, PitchHash>();
     for (const juce::MPENote& mpeNote : mpeNotes)
     {
-        Pitch pitch(mpeNote);
+        DBG(mpeNote.getFrequencyInHertz());
+        Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
         pitches.insert(pitch);
+        // Set all held pitches to max intensity
         pitchIntensities[pitch] = 1;
     }
     
+    // Decay intensities of all pitches that aren't still held
     auto it = pitchIntensities.begin();
     while (it != pitchIntensities.end())
     {
@@ -129,7 +152,7 @@ void PluginEditor::updateTiles()
         float& intensity = it->second;
         if (pitches.find(pitch) == pitches.end())
         {
-            intensity -= 0.015f;
+            intensity -= 0.01f;
         }
         if (intensity <= 0)
         {
@@ -140,6 +163,8 @@ void PluginEditor::updateTiles()
             ++it;
         }
     }
+
+    // Update PitchClassTiles
     for (const std::unique_ptr<PitchClassTile>& pitchClassTile : tiles)
     {
         pitchClassTile->updatePitchIntensities(pitchIntensities);

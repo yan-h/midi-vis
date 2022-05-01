@@ -12,13 +12,23 @@ PitchClassTile::PitchClassTile(const PitchClass& pitchClass) :
 {
 }
 
+PitchClassTile::PitchClassTile(int factor3, int factor5, float semisFactor3, float semisFactor5) :
+	pitchClass(PitchClass(Pitch(factor3 * semisFactor3 + factor5 * semisFactor5))),
+	tolerance(0.05),
+	needsRepaint(5)
+{
+
+}
+
 juce::Colour PitchClassTile::pitchColor(Pitch pitch, float intensity)
 {
-	float x = (pitch.getMidiPitch() - 60.f)/36.f;
-	float sign = x >= 0 ? 1 : -1;
-	x = 1 - std::powf((1.f - std::abs(x)), 1);
-	x *= sign;
-	return juce::Colour(0.15 + x * 0.15, 0.8f, 0.4 + x * 0.2, std::powf(intensity, 2));
+	float x = std::powf((pitch.getMidiPitch() - 36.f) / 48.f, 1);
+	return juce::Colour(
+		0.05f + x * 0.2f, 
+		0.9f, 
+		0.7f, 
+		std::powf(std::fmaxf(0.f, (intensity - 0.95f) * 20.f), 1.5)
+		);
 }
 
 void PitchClassTile::paint(juce::Graphics& g)
@@ -29,8 +39,6 @@ void PitchClassTile::paint(juce::Graphics& g)
 	float centerX = radius;
 	float centerY = radius;
 
-	g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-
 	// We only want pitches that share the max intensity. All others are ignored
 	std::vector<Pitch> maxIntensityPitches;
 	float maxIntensity = 0;
@@ -38,7 +46,6 @@ void PitchClassTile::paint(juce::Graphics& g)
 	{
 		Pitch pitch = pair.first;
 		float intensity = pair.second;
-		DBG(intensity);
 		if (intensity > maxIntensity)
 		{
 			maxIntensity = intensity;
@@ -49,6 +56,13 @@ void PitchClassTile::paint(juce::Graphics& g)
 			maxIntensityPitches.push_back(pitch);
 		}
 	}
+
+	// background color
+	g.fillAll(juce::Colour(
+		0.f, 
+		0.f, 
+		std::fmin(0.3f, std::powf(maxIntensity * 6, 1.5f)), 
+		1.f));
 
 	int numPitches = maxIntensityPitches.size();
 	float angle = 0;
@@ -68,7 +82,6 @@ void PitchClassTile::paint(juce::Graphics& g)
 		angle += angleDiff;
 	}
 
-
 	int borderSize = 2;
 
 	g.setColour(getLookAndFeel().findColour(juce::TextEditor::textColourId));
@@ -81,15 +94,15 @@ void PitchClassTile::paint(juce::Graphics& g)
 	g.drawText(juce::String(pitchClass.getCents()) + juce::String("c"), bounds, juce::Justification::centred, false);
 }
 
-void PitchClassTile::updatePitchIntensities(const std::map<Pitch, float>& pitchIntensities)
+void PitchClassTile::updatePitchIntensities(const std::map<Pitch, float>& allPitchIntensities)
 {
 	std::map<Pitch, float> newPitchIntensities = std::map<Pitch, float>();
 
-	for (const std::pair<Pitch, float> pair : pitchIntensities)
+	for (const std::pair<Pitch, float> pair : allPitchIntensities)
 	{
 		const Pitch& pitch = pair.first;
 		float intensity = pair.second;
-		if (pitchClass.containsPitch(pitch))
+		if (pitchClass.matchesPitch(pitch, tolerance))
 		{
 			if (newPitchIntensities.find(pitch) != newPitchIntensities.end())
 			{
@@ -102,11 +115,8 @@ void PitchClassTile::updatePitchIntensities(const std::map<Pitch, float>& pitchI
 		}
 	}
 
-	if (newPitchIntensities.size() > 0 || pitchIntensities.size() > 0)
-	{
-		this->pitchIntensities = newPitchIntensities;
-		needsRepaint = true;
-	}
+	this->pitchIntensities = newPitchIntensities;
+	needsRepaint = true;
 }
 
 void PitchClassTile::timerUpdate()
