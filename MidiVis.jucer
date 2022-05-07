@@ -3,7 +3,7 @@
 <JUCERPROJECT id="XYMwix" name="MidiVis" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginFormats="buildVST3" pluginCharacteristicsValue="pluginProducesMidiOut,pluginWantsMidiIn"
-              defines="JUCE_DISPLAY_SPLASH_SCREEN=0">
+              defines="JUCE_DISPLAY_SPLASH_SCREEN=0" cppLanguageStandard="20">
   <MAINGROUP id="g7Yr22" name="MidiVis">
     <GROUP id="{A1CD4CE2-C68C-6D5C-8F0A-E3E319E70620}" name="Source">
       <FILE id="c7Yynp" name="Hash.h" compile="0" resource="0" file="Source/Hash.h"/>

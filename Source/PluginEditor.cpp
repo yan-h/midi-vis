@@ -20,6 +20,8 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     audioProcessor (p), 
     mpeInstrument(mpeInstrument)
 {
+    getLookAndFeel().setDefaultSansSerifTypefaceName("Lucida Sans Unicode");
+
     mpeInstrument.addListener(this);
 
     //addAndMakeVisible(logBox);
@@ -42,9 +44,6 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     setSize(1100, 900);
 
     int size = 80;
-    float semisFactor3 = 700;
-    float semisFactor5 = 400;
-
     for (int x = 0; x <= 10; x++)
     {
         for (int y = 0; y <= 10; y++)
@@ -53,14 +52,29 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
             int yPos = 10 + y * size;
             int factor3 = -(y - 5);
             int factor5 = x - 5;
-            PitchClassTile* newTile = new PitchClassTile(PitchClass(Pitch(0 + factor3 * 7 + factor5 * 4)));
+            PitchClassTile* newTile = new PitchClassTile(factor3, factor5, 7, 4);
             newTile->setBounds(xPos, yPos, size, size);
             tiles.push_back(std::unique_ptr<PitchClassTile>(newTile));
             addAndMakeVisible(*newTile);
         }
     }
 
+    addAndMakeVisible(tuningMenu);
+    tuningMenu.addItem("12-tet", 1);
+    tuningMenu.addItem("1/4-comma meantone", 2);
+    tuningMenu.addItem("5-limit JI", 3);
+    tuningMenu.onChange = [this] { tuningChanged(); };
+    tuningMenu.setSelectedId(1);
+
     startTimerHz(60);
+}
+
+void PluginEditor::remakeTiles(float semisFactor3, float semisFactor5, float tolerance)
+{
+    for (auto& tile : tiles)
+    {
+        tile->setTuning(semisFactor3, semisFactor5, tolerance);
+    }
 }
 
 std::pair<int, int> PluginEditor::octaveReducedFraction(int factor3, int factor5)
@@ -137,7 +151,6 @@ void PluginEditor::updateTiles()
     std::unordered_set<Pitch, PitchHash> pitches = std::unordered_set<Pitch, PitchHash>();
     for (const juce::MPENote& mpeNote : mpeNotes)
     {
-        DBG(mpeNote.getFrequencyInHertz());
         Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
         pitches.insert(pitch);
         // Set all held pitches to max intensity
@@ -171,6 +184,23 @@ void PluginEditor::updateTiles()
     }
 }
 
+void PluginEditor::tuningChanged()
+{
+    switch (tuningMenu.getSelectedId())
+    {
+    case 1:
+        remakeTiles(7, 4, 0.5);
+        break;
+    case 2:
+        remakeTiles(6.96578, 3.86314, 0.1);
+        break;
+    case 3:
+        remakeTiles(7.01955, 3.86314, 0.01);
+        break;
+    default:
+        remakeTiles(7, 4, 0.5);
+    }
+}
 
 //==============================================================================
 void PluginEditor::paint (juce::Graphics& g)
@@ -181,7 +211,8 @@ void PluginEditor::paint (juce::Graphics& g)
 
 void PluginEditor::resized()
 {
-    logBox.setBounds(10, 10, getWidth() - 20, 190);
+    //logBox.setBounds(10, 10, getWidth() - 20, 190);
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
+    tuningMenu.setBounds(900, 10, 170, 30);
 }

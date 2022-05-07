@@ -45,6 +45,7 @@ public:
     void updateTiles();
     void timerCallback();
 private:
+    void remakeTiles(float, float, float);
     void handleLogMessage(const LogMessage*);
 
     // This reference is provided as a quick way for your editor to
@@ -66,4 +67,7 @@ private:
 
     void updateNote(const juce::MPENote&);
     static std::pair<int, int> octaveReducedFraction(int factor3, int factor5);
+
+    juce::ComboBox tuningMenu;
+    void tuningChanged();
 };
