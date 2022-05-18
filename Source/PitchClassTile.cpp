@@ -14,9 +14,9 @@ namespace {
 	const juce::String commaDownSign = "-";
 }
 
-PitchClassTile::PitchClassTile(int factor3, int factor5, float semisFactor3, float semisFactor5) :
+PitchClassTile::PitchClassTile(int factor3, int factor5, double semisFactor3, double semisFactor5) :
 	pitchClass(PitchClass(Pitch(factor3 * semisFactor3 + factor5 * semisFactor5))),
-	tolerance(0.5f),
+	tolerance(0.5),
 	needsRepaint(false),
 	factor3(factor3),
 	factor5(factor5)
@@ -43,121 +43,156 @@ PitchClassTile::PitchClassTile(int factor3, int factor5, float semisFactor3, flo
 	pitchClass = PitchClass(Pitch(semisFactor3 * factor3 + semisFactor5 * factor5));
 }
 
-void PitchClassTile::setTuning(float semisFactor3, float semisFactor5, float tolerance)
+void PitchClassTile::setTuning(double semisFactor3, double semisFactor5, double tolerance)
 {
 	this->tolerance = tolerance;
-	DBG(semisFactor3);
 	pitchClass = PitchClass(Pitch(semisFactor3 * factor3 + semisFactor5 * factor5));
 	needsRepaint = true;
 }
 
-juce::Colour PitchClassTile::pitchColor(Pitch pitch, float intensity)
+juce::Colour PitchClassTile::pitchColor(Pitch pitch, double intensity)
 {
-	float x = std::powf((pitch.getMidiPitch() - 36.f) / 48.f, 1);
+	double x = std::powf((pitch.getMidiPitch() - 30.0) / 60.0, 1);
 	return juce::Colour(
 		0.05f + x * 0.2f, 
 		0.9f, 
-		0.5f, 
-		std::powf(std::fmaxf(0.f, (intensity - 0.95f) * 20.f), 1.5)
+		0.8f,
+		(float)intensity//std::powf(std::fmaxf(0.f, (intensity - 0.95f) * 20.f), 1.5f)
 		);
 }
 
 void PitchClassTile::paint(juce::Graphics& g)
 {
 	juce::Rectangle<int> bounds = g.getClipBounds();
-	float radius = bounds.getWidth() / 2.f; // assume a square component
-	float largeRadius = radius * 1.42f; // slightly more than sqrt(2)
-	float centerX = radius;
-	float centerY = radius;
+	double radius = bounds.getWidth() / 2.f; // assume a square component
+	double largeRadius = radius * 1.42f; // slightly more than sqrt(2)
+	double centerX = radius;
+	double centerY = radius;
+	int borderSize = 3;
 
-	// We only want pitches that share the max intensity. All others are ignored
-	std::vector<Pitch> maxIntensityPitches;
-	float maxIntensity = 0;
-	for (const std::pair<Pitch, float> pair : pitchIntensities)
+	std::unordered_set<Pitch, PitchHash> localPitches;
+	std::vector<Pitch> heldPitches;
+	double noteIntensity = 0.0; // max of all notes with this pitch class
+	double topIntensity = 0.0; // max of all notes with this pitch class
+	double bassIntensity = 0.0; // max of all notes with this pitch class
+
+	for (const std::pair<Pitch, PitchInfo>& pair : pitchInfos)
 	{
 		Pitch pitch = pair.first;
-		float intensity = pair.second;
-		if (intensity > maxIntensity)
+		PitchInfo pitchInfo = pair.second;
+		if (pitchClass.matchesPitch(pitch, tolerance))
 		{
-			maxIntensity = intensity;
-			maxIntensityPitches = std::vector<Pitch>();
+			localPitches.insert(pitch);
+			noteIntensity = std::max(noteIntensity, pitchInfo.noteIntensity);
+			topIntensity = std::max(topIntensity, pitchInfo.topIntensity);
+			bassIntensity = std::max(bassIntensity, pitchInfo.bassIntensity);
 		}
-		if (intensity == maxIntensity)
+		if (pitchInfo.noteIntensity == 1.0)
 		{
-			maxIntensityPitches.push_back(pitch);
+			heldPitches.push_back(pitch);
 		}
 	}
+	std::sort(heldPitches.begin(), heldPitches.end());
+
+	int numMaxIntensityPitches = heldPitches.size();
 
 	// background color
 	g.fillAll(juce::Colour(
-		0.f, 
-		0.f, 
-		std::fmin(0.3f, std::powf(maxIntensity * 6, 1.5f)), 
+		0.f,
+		0.f,
+		std::fmin(0.15f, std::powf(noteIntensity * 6, 1.5f)),
 		1.f));
 
-	size_t numPitches = maxIntensityPitches.size();
-	float angle = 0;
-	float angleDiff = 2.f * M_PI / (float)numPitches;
-	for (Pitch pitch : maxIntensityPitches)
-	{
-		juce::Path path;
-		path.startNewSubPath(centerX, centerY);
-		path.addPieSegment(radius - largeRadius, radius - largeRadius, 2 * largeRadius, 2 * largeRadius, angle, angle + angleDiff, 0);
-		path.closeSubPath();
-
-		juce::FillType fillType;
-		fillType.setColour(pitchColor(pitch, maxIntensity));
-		g.setFillType(fillType);
-		g.fillPath(path);
-
-		angle += angleDiff;
+	// held notes are a brighter color
+	if (noteIntensity > 0.9) {
+		g.setColour(juce::Colour(0.f, 0.f, 0.15f + (noteIntensity - 0.9) * 3.5f, 1.f));
+		g.fillRect(juce::Rectangle<int>(bounds.getWidth(), bounds.getHeight()));
 	}
 
-	int borderSize = 2;
+	// top note overlay
+	g.fillAll(juce::Colour(0.6f, 1.f, 1.f, std::powf((float)topIntensity, 1) * 0.5f));
+	// bottom note overlay
+	g.fillAll(juce::Colour(0.0f, 1.f, 1.f, std::powf((float)bassIntensity, 1) * 0.5f));
+
+	if (noteIntensity > 0.9) {
+		g.setColour(juce::Colour(0.f, 0.f, 1.f, ((float)noteIntensity - 0.9f) * 10.f));
+		g.fillRect(juce::Rectangle<int>(bounds.getWidth(), borderSize));
+		g.fillRect(juce::Rectangle<int>(0, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
+		g.fillRect(juce::Rectangle<int>(bounds.getWidth() - borderSize, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
+		g.fillRect(juce::Rectangle<int>(0, bounds.getHeight() - borderSize, bounds.getWidth(), borderSize));
+	}
+
+	/*
+	bool isMin = false;
+	bool isMax = false;
+	double yMin = borderSize;
+	double yMax = bounds.getHeight() - borderSize;
+	double yRange = yMax - yMin;
+	for (int i = 0; i < heldPitches.size(); i++)
+	{
+		if (pitchClass.matchesPitch(Pitch(60)))
+		{
+			std::stringstream s;
+			s << i << " " << heldPitches[i].getMidiPitch();
+			DBG(s.str());// i + " " + maxIntensityPitches[i].getMidiPitch());
+		}
+		Pitch pitch = heldPitches[i];
+		if (pitchClass.matchesPitch(pitch))
+		{
+			DBG(pitch.getMidiPitch());
+			double startFrac = 1.0 * i / heldPitches.size();
+			double endFrac = (i + 1.0) / heldPitches.size();
+			int f = yRange * ((i + 1.0) / heldPitches.size());
+
+			g.setColour(juce::Colour(0.f, 0.f, 0.55f, 1.f));
+			//g.setColour(pitchColor(pitch, 1));
+			g.fillRect(juce::Rectangle<float>(borderSize, yMax - f, bounds.getWidth(), yRange / heldPitches.size()));
+			if (i == 0) isMin = true;
+			if (i == heldPitches.size() - 1) isMax = true;
+		}
+	}*/
+
+
+
+	/*
+	// Draw pitches
+	for (const std::pair<Pitch, double> pair : pitchIntensities)
+	{
+		Pitch pitch = pair.first;
+		double intensity = pair.second;
+		if (intensity < 1.0) continue;
+		double heightProportion = (pitch.getMidiPitch() - lowerBound.getMidiPitch()) / (upperBound.getMidiPitch() - lowerBound.getMidiPitch());
+		double y = (1 - heightProportion) * bounds.getHeight();
+
+		if (localPitches.find(pitch) != localPitches.end()) 
+		{
+			g.setColour(pitchColor(pitch, intensity));
+			g.fillRect(juce::Rectangle<int>(0, y - 5, bounds.getWidth(), 10));
+		}
+	}
+	*/
 
 	g.setColour(getLookAndFeel().findColour(juce::TextEditor::textColourId));
-	g.fillRect(juce::Rectangle<int>(bounds.getWidth(), borderSize));
-	g.fillRect(juce::Rectangle<int>(borderSize, bounds.getHeight()));
-	g.fillRect(juce::Rectangle<int>(bounds.getWidth() - borderSize, 0, borderSize, bounds.getHeight()));
-	g.fillRect(juce::Rectangle<int>(0, bounds.getHeight() - borderSize, bounds.getWidth(), borderSize));
-	
+	// Note name text
 	g.setFont(28);
 	g.drawText(pitchName, 
 		juce::Rectangle<int>(0, 0, bounds.getWidth(), std::round(bounds.getHeight() * 0.55)), 
 		juce::Justification::centredBottom, 
 		false);
 
+	// Semitones text
 	g.setFont(20);
 	std::stringstream stream;
-	stream << std::fixed << std::setprecision(2) << (float)pitchClass.getCents() / 100.f;
+	stream << std::fixed << std::setprecision(2) << (double)pitchClass.getCents() / 100.f;
 	g.drawText(stream.str(), 
 		juce::Rectangle<int>(0, std::round(bounds.getHeight() * 0.55), bounds.getWidth(), std::round(bounds.getHeight() * 0.45)),
 		juce::Justification::centredTop, 
 		false);
 }
 
-void PitchClassTile::updatePitchIntensities(const std::map<Pitch, float>& allPitchIntensities)
+void PitchClassTile::updatePitchIntensities(const std::map<Pitch, PitchInfo>& allPitchInfos)
 {
-	std::map<Pitch, float> newPitchIntensities = std::map<Pitch, float>();
-
-	for (const std::pair<Pitch, float> pair : allPitchIntensities)
-	{
-		const Pitch& pitch = pair.first;
-		float intensity = pair.second;
-		if (pitchClass.matchesPitch(pitch, tolerance))
-		{
-			if (newPitchIntensities.find(pitch) != newPitchIntensities.end())
-			{
-				newPitchIntensities[intensity] = std::max(intensity, newPitchIntensities[intensity]);
-			} 
-			else 
-			{
-				newPitchIntensities.insert(pair);
-			}
-		}
-	}
-
-	this->pitchIntensities = newPitchIntensities;
+	pitchInfos = allPitchInfos;
 	needsRepaint = true;
 }
 

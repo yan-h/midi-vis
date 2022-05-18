@@ -11,7 +11,6 @@
 #include <JuceHeader.h>
 
 class PluginEditor;
-class MidiNote;
 
 //==============================================================================
 /**

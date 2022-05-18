@@ -12,6 +12,7 @@
 #include "PluginProcessor.h"
 #include "PitchClassTile.h"
 #include "Hash.h"
+#include "PitchInfo.h"
 
 class LogMessage;
 
@@ -30,7 +31,7 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
-    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&);
+    void processBlock(juce::AudioBuffer<double>&, juce::MidiBuffer&);
 
    // void handleMessage(const juce::Message&) override;
 
@@ -45,7 +46,7 @@ public:
     void updateTiles();
     void timerCallback();
 private:
-    void remakeTiles(float, float, float);
+    void remakeTiles(double, double, double);
     void handleLogMessage(const LogMessage*);
 
     // This reference is provided as a quick way for your editor to
@@ -60,13 +61,11 @@ private:
     std::vector<std::unique_ptr<PitchClassTile>> tiles;
 
     juce::CriticalSection mpeNotesLock;
-    std::unordered_set<juce::MPENote, MPENoteHash> mpeNotes;
-    std::map<Pitch, float> pitchIntensities;
+    //std::unordered_set<juce::MPENote, MPENoteHash> mpeNotes;
+    std::map<Pitch, PitchInfo> pitchInfos;
+    std::set<Pitch> heldPitches;
 
     juce::MPEInstrument& mpeInstrument;
-
-    void updateNote(const juce::MPENote&);
-    static std::pair<int, int> octaveReducedFraction(int factor3, int factor5);
 
     juce::ComboBox tuningMenu;
     void tuningChanged();

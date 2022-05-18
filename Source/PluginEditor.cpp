@@ -61,28 +61,21 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
 
     addAndMakeVisible(tuningMenu);
     tuningMenu.addItem("12-tet", 1);
-    tuningMenu.addItem("1/4-comma meantone", 2);
-    tuningMenu.addItem("5-limit JI", 3);
+    tuningMenu.addItem("31-tet", 2);
+    tuningMenu.addItem("53-tet", 3);
+    tuningMenu.addItem("5-limit JI", 4);
     tuningMenu.onChange = [this] { tuningChanged(); };
     tuningMenu.setSelectedId(1);
 
     startTimerHz(60);
 }
 
-void PluginEditor::remakeTiles(float semisFactor3, float semisFactor5, float tolerance)
+void PluginEditor::remakeTiles(double semisFactor3, double semisFactor5, double tolerance)
 {
     for (auto& tile : tiles)
     {
         tile->setTuning(semisFactor3, semisFactor5, tolerance);
     }
-}
-
-std::pair<int, int> PluginEditor::octaveReducedFraction(int factor3, int factor5)
-{
-    int num = 1;
-    int denom = 1;
-
-    return std::pair<int, int>(0, 0);
 }
 
 PluginEditor::~PluginEditor()
@@ -108,79 +101,92 @@ void PluginEditor::handleLogMessage(const LogMessage* logMessage)
 
 void PluginEditor::noteAdded(juce::MPENote mpeNote)
 {
-    updateNote(mpeNote);
+    const juce::ScopedLock lock(mpeNotesLock);
+
+    Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
+
+    heldPitches.insert(pitch);
+
+    double topIntensity = *heldPitches.rbegin() == pitch ? 1.0 : 0.0;
+    double bassIntensity = *heldPitches.begin() == pitch ? 1.0 : 0.0;
+    pitchInfos[pitch] = PitchInfo(1.0, topIntensity, bassIntensity);
 }
 
 void PluginEditor::notePressureChanged(juce::MPENote mpeNote)
 {
-    updateNote(mpeNote);
+   // updateNote(mpeNote);
 }
 
 void PluginEditor::notePitchbendChanged(juce::MPENote mpeNote)
 {
-    updateNote(mpeNote);
+   // updateNote(mpeNote);
 }
 void PluginEditor::noteTimbreChanged(juce::MPENote mpeNote)
 {
-    updateNote(mpeNote);
+   // updateNote(mpeNote);
 }
 void PluginEditor::noteKeyStateChanged(juce::MPENote mpeNote)
 {
-    updateNote(mpeNote);
+  //  updateNote(mpeNote);
 }
 void PluginEditor::noteReleased(juce::MPENote mpeNote)
 {
     const juce::ScopedLock lock(mpeNotesLock);
-    mpeNotes.erase(mpeNote);
+
+    Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
+
+    heldPitches.erase(pitch);
 }
 void PluginEditor::zoneLayoutChanged()
 {
 
 }
 
-void PluginEditor::updateNote(const juce::MPENote& mpeNote)
-{
-    const juce::ScopedLock lock(mpeNotesLock);
-    mpeNotes.erase(mpeNote);
-    mpeNotes.insert(mpeNote);
-}
-
 void PluginEditor::updateTiles()
 {
-    // Set of all held pitches
-    std::unordered_set<Pitch, PitchHash> pitches = std::unordered_set<Pitch, PitchHash>();
-    for (const juce::MPENote& mpeNote : mpeNotes)
+    Pitch maxPitch = Pitch(-9999.0);
+    Pitch minPitch = Pitch(-9999.0);
+    if (heldPitches.size() > 0)
     {
-        Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
-        pitches.insert(pitch);
-        // Set all held pitches to max intensity
-        pitchIntensities[pitch] = 1;
+        maxPitch = *heldPitches.rbegin();
+        minPitch = *heldPitches.begin();
     }
-    
-    // Decay intensities of all pitches that aren't still held
-    auto it = pitchIntensities.begin();
-    while (it != pitchIntensities.end())
+
+    for (auto& it : heldPitches) {
+     //   DBG(it.getMidiPitch());
+    }
+
+    auto it = pitchInfos.begin();
+    while (it != pitchInfos.end())
     {
-        const Pitch& pitch = it->first;
-        float& intensity = it->second;
-        if (pitches.find(pitch) == pitches.end())
-        {
-            intensity -= 0.01f;
-        }
-        if (intensity <= 0)
-        {
-            it = pitchIntensities.erase(it);
-        } 
+        Pitch pitch = it->first;
+        PitchInfo& pitchInfo = it->second;
+
+        if (heldPitches.find(pitch) == heldPitches.end())
+            pitchInfo.noteIntensity = std::max(pitchInfo.noteIntensity - 0.01, 0.0);
         else 
-        {
+            pitchInfo.noteIntensity = 1.0;
+
+        if (heldPitches.find(pitch) == heldPitches.end() || pitch != maxPitch)
+            pitchInfo.topIntensity = std::max(pitchInfo.topIntensity - 0.15, 0.0);
+        else
+            pitchInfo.topIntensity = std::min(pitchInfo.topIntensity + 0.15, 1.0);
+
+        if (heldPitches.find(pitch) == heldPitches.end() || pitch != minPitch)
+            pitchInfo.bassIntensity = std::max(pitchInfo.bassIntensity - 0.15, 0.0);
+        else
+            pitchInfo.bassIntensity = std::min(pitchInfo.bassIntensity + 0.15, 1.0);
+
+        if (pitchInfo.noteIntensity <= 0)
+            it = pitchInfos.erase(it);
+        else 
             ++it;
-        }
     }
 
     // Update PitchClassTiles
     for (const std::unique_ptr<PitchClassTile>& pitchClassTile : tiles)
     {
-        pitchClassTile->updatePitchIntensities(pitchIntensities);
+        pitchClassTile->updatePitchIntensities(pitchInfos);
     }
 }
 
@@ -192,9 +198,12 @@ void PluginEditor::tuningChanged()
         remakeTiles(7, 4, 0.5);
         break;
     case 2:
-        remakeTiles(6.96578, 3.86314, 0.1);
+        remakeTiles(6.967742, 3.870968, 0.01);
         break;
     case 3:
+        remakeTiles(7.018868, 3.849057, 0.01);
+        break;
+    case 4:
         remakeTiles(7.01955, 3.86314, 0.01);
         break;
     default:

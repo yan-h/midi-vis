@@ -5,7 +5,7 @@
 
 PitchClass::PitchClass(const Pitch& pitch) 
 {
-	float x = std::fmod(pitch.getMidiPitch(), 12);
+	double x = std::fmod(pitch.getMidiPitch(), 12);
 	if (x < 0) x += 12;
 	midiPitchClass = std::abs(x);
 }
@@ -26,12 +26,12 @@ bool PitchClass::matchesPitch(const Pitch& pitch) const
 }
 
 
-bool PitchClass::matchesPitch(const Pitch& pitch, float tolerance) const
+bool PitchClass::matchesPitch(const Pitch& pitch, double tolerance) const
 {
 	return std::abs(PitchClass(pitch).midiPitchClass - midiPitchClass) <= std::fmax(Pitch::epsilon, tolerance);
 }
 
-float PitchClass::getCents() const
+double PitchClass::getCents() const
 {
 	return midiPitchClass * 100;
 }

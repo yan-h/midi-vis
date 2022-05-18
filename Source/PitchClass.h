@@ -8,10 +8,10 @@ public:
 	PitchClass(const Pitch&);
 	PitchClass(const PitchClass&);
 	bool matchesPitch(const Pitch&) const;
-	bool matchesPitch (const Pitch&, float) const;
+	bool matchesPitch (const Pitch&, double) const;
 	bool operator==(const PitchClass&) const;
-	float getCents() const;
+	double getCents() const;
 private:
-	float midiPitchClass;
+	double midiPitchClass;
 };
 

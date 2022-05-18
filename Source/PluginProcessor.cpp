@@ -215,9 +215,7 @@ bool PluginProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor()
 {
-    DBG("create editor");
     PluginEditor* editor = new PluginEditor(*this, mpeInstrument);
-    DBG("listenrer added");
     return editor;
 }
 
