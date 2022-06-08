@@ -6,6 +6,8 @@
               defines="JUCE_DISPLAY_SPLASH_SCREEN=0" cppLanguageStandard="20">
   <MAINGROUP id="g7Yr22" name="MidiVis">
     <GROUP id="{A1CD4CE2-C68C-6D5C-8F0A-E3E319E70620}" name="Source">
+      <FILE id="E1hIgq" name="PitchInfo.h" compile="0" resource="0" file="Source/PitchInfo.h"/>
+      <FILE id="s99VXw" name="PitchInfo.cpp" compile="1" resource="0" file="Source/PitchInfo.cpp"/>
       <FILE id="c7Yynp" name="Hash.h" compile="0" resource="0" file="Source/Hash.h"/>
       <FILE id="W8ro1m" name="LogMessage.cpp" compile="1" resource="0" file="Source/LogMessage.cpp"/>
       <FILE id="yZGRsx" name="LogMessage.h" compile="0" resource="0" file="Source/LogMessage.h"/>

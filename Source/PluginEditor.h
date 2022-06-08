@@ -48,6 +48,7 @@ public:
 private:
     void remakeTiles(double, double, double);
     void handleLogMessage(const LogMessage*);
+    void updateNote(const juce::MPENote&);
 
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
@@ -61,7 +62,7 @@ private:
     std::vector<std::unique_ptr<PitchClassTile>> tiles;
 
     juce::CriticalSection mpeNotesLock;
-    //std::unordered_set<juce::MPENote, MPENoteHash> mpeNotes;
+    std::unordered_set<juce::MPENote, MPENoteHash> mpeNotes;
     std::map<Pitch, PitchInfo> pitchInfos;
     std::set<Pitch> heldPitches;
 

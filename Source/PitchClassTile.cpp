@@ -28,16 +28,15 @@ PitchClassTile::PitchClassTile(int factor3, int factor5, double semisFactor3, do
 	int semiOffset = numFifths / 7;
 	pitchName = letterNames[letterNameIndex];
 	if (semiOffset > 0) {
-		for (int i = 0; i < semiOffset; i++)
-		{
-			pitchName += sharpSign;
-		}
+		if (semiOffset >= 1) pitchName += sharpSign;
+		if (semiOffset == 2) pitchName += sharpSign;
+		else if (semiOffset > 2) pitchName += semiOffset;
 	}
-	else if (numFifths < 0) {
-		for (int i = 0; i < std::abs(semiOffset) + 1; i++)
-		{
-			pitchName += flatSign;
-		}
+	else if (numFifths < 0) 
+	{
+		if (semiOffset <= 0) pitchName += flatSign;
+		if (semiOffset == -1) pitchName += flatSign;
+		else if (semiOffset < -1) pitchName += std::abs(semiOffset) + 1;
 	}
 
 	pitchClass = PitchClass(Pitch(semisFactor3 * factor3 + semisFactor5 * factor5));
@@ -68,7 +67,7 @@ void PitchClassTile::paint(juce::Graphics& g)
 	double largeRadius = radius * 1.42f; // slightly more than sqrt(2)
 	double centerX = radius;
 	double centerY = radius;
-	int borderSize = 3;
+	int borderSize = 1;
 
 	std::unordered_set<Pitch, PitchHash> localPitches;
 	std::vector<Pitch> heldPitches;
@@ -96,87 +95,55 @@ void PitchClassTile::paint(juce::Graphics& g)
 
 	int numMaxIntensityPitches = heldPitches.size();
 
+	float ghostBrightness = 0.0f;
+	float borderBrightness = 0.7f;
+
 	// background color
 	g.fillAll(juce::Colour(
 		0.f,
 		0.f,
-		std::fmin(0.15f, std::powf(noteIntensity * 6, 1.5f)),
+		std::fmin(ghostBrightness, std::powf(noteIntensity * 6, 1.5f)),
 		1.f));
 
 	// held notes are a brighter color
 	if (noteIntensity > 0.9) {
-		g.setColour(juce::Colour(0.f, 0.f, 0.15f + (noteIntensity - 0.9) * 3.5f, 1.f));
+		g.setColour(juce::Colour(0.6f, 0.5f, 0.5f, 10.f * ((float)noteIntensity - 0.9f)));
 		g.fillRect(juce::Rectangle<int>(bounds.getWidth(), bounds.getHeight()));
 	}
 
-	// top note overlay
-	g.fillAll(juce::Colour(0.6f, 1.f, 1.f, std::powf((float)topIntensity, 1) * 0.5f));
+	int ringOffset1 = borderSize + 6;
+	juce::Rectangle outerRectangle = juce::Rectangle<int>(ringOffset1, ringOffset1, bounds.getWidth() - ringOffset1 * 2, bounds.getHeight() - ringOffset1 * 2);
+	int ringOffset2 = borderSize + 12;
+	juce::Rectangle innerRectangle = juce::Rectangle<int>(ringOffset2, ringOffset2, bounds.getWidth() - ringOffset2 * 2, bounds.getHeight() - ringOffset2 * 2);
+
 	// bottom note overlay
-	g.fillAll(juce::Colour(0.0f, 1.f, 1.f, std::powf((float)bassIntensity, 1) * 0.5f));
+	juce::Path path;
+	path.addRectangle(bounds);
+	path.setUsingNonZeroWinding(false);
+	path.addRectangle(outerRectangle);
+	g.setColour(juce::Colour(0.6f, 0.5f, 0.9f, (float)bassIntensity));
+	g.fillPath(path);
 
-	if (noteIntensity > 0.9) {
-		g.setColour(juce::Colour(0.f, 0.f, 1.f, ((float)noteIntensity - 0.9f) * 10.f));
-		g.fillRect(juce::Rectangle<int>(bounds.getWidth(), borderSize));
-		g.fillRect(juce::Rectangle<int>(0, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
-		g.fillRect(juce::Rectangle<int>(bounds.getWidth() - borderSize, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
-		g.fillRect(juce::Rectangle<int>(0, bounds.getHeight() - borderSize, bounds.getWidth(), borderSize));
-	}
+	// top note overlay
+	juce::Path path2;
+	path2.addRectangle(outerRectangle);
+	path2.setUsingNonZeroWinding(false);
+	path2.addRectangle(innerRectangle);
+	g.setColour(juce::Colour(0.6f, 0.2f, 1.f, (float)topIntensity));
+	g.fillPath(path2);
 
-	/*
-	bool isMin = false;
-	bool isMax = false;
-	double yMin = borderSize;
-	double yMax = bounds.getHeight() - borderSize;
-	double yRange = yMax - yMin;
-	for (int i = 0; i < heldPitches.size(); i++)
-	{
-		if (pitchClass.matchesPitch(Pitch(60)))
-		{
-			std::stringstream s;
-			s << i << " " << heldPitches[i].getMidiPitch();
-			DBG(s.str());// i + " " + maxIntensityPitches[i].getMidiPitch());
-		}
-		Pitch pitch = heldPitches[i];
-		if (pitchClass.matchesPitch(pitch))
-		{
-			DBG(pitch.getMidiPitch());
-			double startFrac = 1.0 * i / heldPitches.size();
-			double endFrac = (i + 1.0) / heldPitches.size();
-			int f = yRange * ((i + 1.0) / heldPitches.size());
-
-			g.setColour(juce::Colour(0.f, 0.f, 0.55f, 1.f));
-			//g.setColour(pitchColor(pitch, 1));
-			g.fillRect(juce::Rectangle<float>(borderSize, yMax - f, bounds.getWidth(), yRange / heldPitches.size()));
-			if (i == 0) isMin = true;
-			if (i == heldPitches.size() - 1) isMax = true;
-		}
-	}*/
-
-
-
-	/*
-	// Draw pitches
-	for (const std::pair<Pitch, double> pair : pitchIntensities)
-	{
-		Pitch pitch = pair.first;
-		double intensity = pair.second;
-		if (intensity < 1.0) continue;
-		double heightProportion = (pitch.getMidiPitch() - lowerBound.getMidiPitch()) / (upperBound.getMidiPitch() - lowerBound.getMidiPitch());
-		double y = (1 - heightProportion) * bounds.getHeight();
-
-		if (localPitches.find(pitch) != localPitches.end()) 
-		{
-			g.setColour(pitchColor(pitch, intensity));
-			g.fillRect(juce::Rectangle<int>(0, y - 5, bounds.getWidth(), 10));
-		}
-	}
-	*/
+	// outline
+	g.setColour(juce::Colour(0.6f, 0.5f, 0.9f, 1.f));
+	g.fillRect(juce::Rectangle<int>(bounds.getWidth(), borderSize));
+	g.fillRect(juce::Rectangle<int>(0, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
+	g.fillRect(juce::Rectangle<int>(bounds.getWidth() - borderSize, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
+	g.fillRect(juce::Rectangle<int>(0, bounds.getHeight() - borderSize, bounds.getWidth(), borderSize));
 
 	g.setColour(getLookAndFeel().findColour(juce::TextEditor::textColourId));
 	// Note name text
-	g.setFont(28);
+	g.setFont(40);
 	g.drawText(pitchName, 
-		juce::Rectangle<int>(0, 0, bounds.getWidth(), std::round(bounds.getHeight() * 0.55)), 
+		juce::Rectangle<int>(0, bounds.getHeight() * 0.1, bounds.getWidth(), std::round(bounds.getHeight() * 0.55)),
 		juce::Justification::centredBottom, 
 		false);
 

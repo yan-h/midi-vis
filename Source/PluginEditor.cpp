@@ -110,24 +110,47 @@ void PluginEditor::noteAdded(juce::MPENote mpeNote)
     double topIntensity = *heldPitches.rbegin() == pitch ? 1.0 : 0.0;
     double bassIntensity = *heldPitches.begin() == pitch ? 1.0 : 0.0;
     pitchInfos[pitch] = PitchInfo(1.0, topIntensity, bassIntensity);
+
+    updateNote(mpeNote);
 }
 
 void PluginEditor::notePressureChanged(juce::MPENote mpeNote)
 {
-   // updateNote(mpeNote);
+    updateNote(mpeNote);
+}
+
+void PluginEditor::updateNote(const juce::MPENote& mpeNote)
+{
+    const juce::ScopedLock lock(mpeNotesLock);
+    mpeNotes.erase(mpeNote);
+    mpeNotes.insert(mpeNote);
 }
 
 void PluginEditor::notePitchbendChanged(juce::MPENote mpeNote)
 {
-   // updateNote(mpeNote);
+    const juce::ScopedLock lock(mpeNotesLock);
+
+    Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
+
+    if (mpeNotes.find(mpeNote) != mpeNotes.end())
+    {
+        heldPitches.erase(Pitch::fromFreqHz(mpeNotes.find(mpeNote)->getFrequencyInHertz()));
+    }
+
+    heldPitches.insert(pitch);
+
+    double topIntensity = *heldPitches.rbegin() == pitch ? 1.0 : 0.0;
+    double bassIntensity = *heldPitches.begin() == pitch ? 1.0 : 0.0;
+    pitchInfos[pitch] = PitchInfo(1.0, topIntensity, bassIntensity);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteTimbreChanged(juce::MPENote mpeNote)
 {
-   // updateNote(mpeNote);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteKeyStateChanged(juce::MPENote mpeNote)
 {
-  //  updateNote(mpeNote);
+    updateNote(mpeNote);
 }
 void PluginEditor::noteReleased(juce::MPENote mpeNote)
 {
@@ -136,6 +159,7 @@ void PluginEditor::noteReleased(juce::MPENote mpeNote)
     Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
 
     heldPitches.erase(pitch);
+    mpeNotes.erase(mpeNote);
 }
 void PluginEditor::zoneLayoutChanged()
 {
@@ -156,6 +180,8 @@ void PluginEditor::updateTiles()
      //   DBG(it.getMidiPitch());
     }
 
+    double markerIntensityChange = 0.15;
+
     auto it = pitchInfos.begin();
     while (it != pitchInfos.end())
     {
@@ -168,14 +194,14 @@ void PluginEditor::updateTiles()
             pitchInfo.noteIntensity = 1.0;
 
         if (heldPitches.find(pitch) == heldPitches.end() || pitch != maxPitch)
-            pitchInfo.topIntensity = std::max(pitchInfo.topIntensity - 0.15, 0.0);
+            pitchInfo.topIntensity = std::max(pitchInfo.topIntensity - markerIntensityChange, 0.0);
         else
-            pitchInfo.topIntensity = std::min(pitchInfo.topIntensity + 0.15, 1.0);
+            pitchInfo.topIntensity = std::min(pitchInfo.topIntensity + markerIntensityChange, 1.0);
 
         if (heldPitches.find(pitch) == heldPitches.end() || pitch != minPitch)
-            pitchInfo.bassIntensity = std::max(pitchInfo.bassIntensity - 0.15, 0.0);
+            pitchInfo.bassIntensity = std::max(pitchInfo.bassIntensity - markerIntensityChange, 0.0);
         else
-            pitchInfo.bassIntensity = std::min(pitchInfo.bassIntensity + 0.15, 1.0);
+            pitchInfo.bassIntensity = std::min(pitchInfo.bassIntensity + markerIntensityChange, 1.0);
 
         if (pitchInfo.noteIntensity <= 0)
             it = pitchInfos.erase(it);
