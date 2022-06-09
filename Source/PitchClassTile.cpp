@@ -7,11 +7,25 @@
 #include "Hash.h"
 
 namespace {
-	const std::vector<juce::String> letterNames = { "F", "C", "G", "D", "A", "E", "B" };
-	const juce::String flatSign = juce::CharPointer_UTF8("\xe2\x99\xad");
-	const juce::String sharpSign = juce::CharPointer_UTF8("\xe2\x99\xaf");
-	const juce::String commaUpSign = "+";
-	const juce::String commaDownSign = "-";
+const std::vector<juce::String> letterNames = { "F", "C", "G", "D", "A", "E", "B" };
+
+#if JUCE_MAC
+const juce::String flatSign = "b";
+const juce::String sharpSign = "#";
+const int noteNameFontSize = 28;
+const int semitonesFontSize = 16;
+const float spacingOffset = 0.05f;
+#else
+const juce::String flatSign = juce::CharPointer_UTF8("\xe2\x99\xad");
+const juce::String sharpSign = juce::CharPointer_UTF8("\xe2\x99\xaf");
+const int noteNameFontSize = 40;
+const int semitonesFontSize = 20;
+const float spacingOffset = 0.f;
+#endif
+
+const juce::String commaUpSign = "+";
+const juce::String commaDownSign = "-";
+
 }
 
 PitchClassTile::PitchClassTile(int factor3, int factor5, double semisFactor3, double semisFactor5) :
@@ -141,18 +155,18 @@ void PitchClassTile::paint(juce::Graphics& g)
 
 	g.setColour(getLookAndFeel().findColour(juce::TextEditor::textColourId));
 	// Note name text
-	g.setFont(40);
+	g.setFont(noteNameFontSize);
 	g.drawText(pitchName, 
-		juce::Rectangle<int>(0, bounds.getHeight() * 0.1, bounds.getWidth(), std::round(bounds.getHeight() * 0.55)),
+		juce::Rectangle<int>(0, bounds.getHeight() * 0.1, bounds.getWidth(), std::round(bounds.getHeight() * (0.55 - spacingOffset))),
 		juce::Justification::centredBottom, 
 		false);
 
 	// Semitones text
-	g.setFont(20);
+	g.setFont(semitonesFontSize);
 	std::stringstream stream;
 	stream << std::fixed << std::setprecision(2) << (double)pitchClass.getCents() / 100.f;
 	g.drawText(stream.str(), 
-		juce::Rectangle<int>(0, std::round(bounds.getHeight() * 0.55), bounds.getWidth(), std::round(bounds.getHeight() * 0.45)),
+		juce::Rectangle<int>(0, std::round(bounds.getHeight() * (0.55 + spacingOffset)), bounds.getWidth(), std::round(bounds.getHeight() * 0.45)),
 		juce::Justification::centredTop, 
 		false);
 }
