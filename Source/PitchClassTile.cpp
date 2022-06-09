@@ -109,13 +109,13 @@ void PitchClassTile::paint(juce::Graphics& g)
 
 	int numMaxIntensityPitches = heldPitches.size();
 
-	float ghostBrightness = 0.0f;
+	float ghostBrightness = 0.22f;
 	float borderBrightness = 0.7f;
 
 	// background color
 	g.fillAll(juce::Colour(
-		0.f,
-		0.f,
+		0.6f,
+		0.4f,
 		std::fmin(ghostBrightness, std::powf(noteIntensity * 6, 1.5f)),
 		1.f));
 
