@@ -12,8 +12,8 @@ class PitchClassTile :
 	public juce::Component
 {
 public:
-	PitchClassTile(int, int, double, double);
-	void setTuning(double, double, double);
+	PitchClassTile(int, int, double, double, double);
+	void setTuning(int, int, double, double, double);
 	void paint(juce::Graphics& g) override;
 	void updatePitchIntensities(const std::map<Pitch, PitchInfo>&);
 	void timerUpdate();
@@ -24,7 +24,11 @@ private:
 	bool needsRepaint;
 	juce::Colour pitchColor(Pitch, double);
 	juce::String pitchName;
-	int factor3;
-	int factor5;
+	juce::String accidentals;
+	juce::String syntonicCommas;
+	int factor3Base;
+	int factor5Base;
+	int factor3Offset;
+	int factor5Offset;
 };
 

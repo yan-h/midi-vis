@@ -13,6 +13,7 @@
 #include "PitchClassTile.h"
 #include "Hash.h"
 #include "PitchInfo.h"
+#include "InputLabel.h"
 
 class LogMessage;
 
@@ -22,7 +23,8 @@ class LogMessage;
 class PluginEditor  :
     public juce::AudioProcessorEditor, 
     public juce::MPEInstrument::Listener,
-    public juce::Timer
+    public juce::Timer,
+    private juce::Slider::Listener
 {
 public:
     PluginEditor (PluginProcessor&, juce::MPEInstrument&);
@@ -46,9 +48,10 @@ public:
     void updateTiles();
     void timerCallback();
 private:
-    void remakeTiles(double, double, double);
+    void setTuning(double, double);
     void handleLogMessage(const LogMessage*);
     void updateNote(const juce::MPENote&);
+    void initInputLabel(juce::Label&);
 
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
@@ -69,5 +72,32 @@ private:
     juce::MPEInstrument& mpeInstrument;
 
     juce::ComboBox tuningMenu;
+
+    juce::Label latticeXLabel;
+    juce::Label latticeYLabel;
+    juce::Label centsFactor3Label;
+    juce::Label centsFactor5Label;
+    juce::Label toleranceLabel;
+
+    juce::Label factor3ToFactor5Label;
+    InputLabel factor3ToFactor5InputLabel;
+
+    juce::Slider latticeXSlider;
+    juce::Slider latticeYSlider;
+    juce::Slider centsFactor3Slider;
+    juce::Slider centsFactor5Slider;
+    juce::Slider toleranceSlider;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> latticeXAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> latticeYAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> centsFactor3Attachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> centsFactor5Attachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> toleranceAttachment;
+
     void tuningChanged();
+
+    virtual void sliderValueChanged(juce::Slider* slider) override;
+
+    int factor3Offset;
+    int factor5Offset;
 };

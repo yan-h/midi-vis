@@ -22,10 +22,27 @@ PluginProcessor::PluginProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ), apvts(*this, nullptr, "Parameters", createParameters())
 #endif
 {
     mpeInstrument.enableLegacyMode(24);
+
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParameters()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "CENTS_FACTOR_3", "P5 cents", 680.f, 720.f, 700.f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "CENTS_FACTOR_5", "M3 cents", 380.f, 420.f, 400.f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "CENTS_TOLERANCE", "Tolerance", 0.1f, 50.f, 0.1f));
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+        "LATTICE_X", "X offset", -20, 20, 0));
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+        "LATTICE_Y", "Y offset", -20, 20, 0));
+    return { params.begin(), params.end() };
 }
 
 PluginProcessor::~PluginProcessor()
@@ -225,12 +242,20 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
 void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName(apvts.state.getType()))
+            apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
 
 //==============================================================================

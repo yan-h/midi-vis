@@ -55,6 +55,8 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorValueTreeState apvts;
+
 private:
     PluginEditor* getEditor() const noexcept;
 
@@ -63,6 +65,14 @@ private:
     static juce::String getMidiMessageDescription(const juce::MidiMessage&);
 
     juce::MPEInstrument mpeInstrument;
+
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
+
+    juce::AudioParameterFloat* centsFactor3;
+    juce::AudioParameterFloat* centsFactor5;
+    juce::AudioParameterFloat* centsTolerance;
+    juce::AudioParameterInt* latticeX;
+    juce::AudioParameterInt* latticeY;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)

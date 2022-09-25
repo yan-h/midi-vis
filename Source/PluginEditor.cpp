@@ -18,11 +18,17 @@
 PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrument):
     AudioProcessorEditor (&p), 
     audioProcessor (p), 
-    mpeInstrument(mpeInstrument)
+    mpeInstrument(mpeInstrument),
+    factor3Offset(0),
+    factor5Offset(0)
 {
-    getLookAndFeel().setDefaultSansSerifTypefaceName("Lucida Sans Unicode");
+    getLookAndFeel().setDefaultSansSerifTypefaceName("Helvetica");
 
     mpeInstrument.addListener(this);
+
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    setSize(870, 930);
 
     //addAndMakeVisible(logBox);
     logBox.setMultiLine(true);
@@ -39,26 +45,7 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     logBox.moveCaretToEnd();
     logBox.insertTextAtCaret("2");
 
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize(1100, 900);
-
-    int size = 80;
-    for (int x = 0; x <= 10; x++)
-    {
-        for (int y = 0; y <= 10; y++)
-        {
-            int xPos = 10 + x * size;
-            int yPos = 10 + y * size;
-            int factor3 = -(y - 5);
-            int factor5 = x - 5;
-            PitchClassTile* newTile = new PitchClassTile(factor3, factor5, 7, 4);
-            newTile->setBounds(xPos, yPos, size, size);
-            tiles.push_back(std::unique_ptr<PitchClassTile>(newTile));
-            addAndMakeVisible(*newTile);
-        }
-    }
-
+    /*
     addAndMakeVisible(tuningMenu);
     tuningMenu.addItem("12-tet", 1);
     tuningMenu.addItem("31-tet", 2);
@@ -66,16 +53,153 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     tuningMenu.addItem("5-limit JI", 4);
     tuningMenu.onChange = [this] { tuningChanged(); };
     tuningMenu.setSelectedId(1);
+    */
+
+    juce::Font labelFont(16);
+    latticeXLabel.setFont(labelFont);
+    latticeXLabel.setText("Horizontal (Major third) offset", juce::dontSendNotification);
+    latticeXLabel.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(latticeXLabel);
+
+    latticeYLabel.setFont(labelFont);
+    latticeYLabel.setText("Vertical (Perfect fifth) offset", juce::dontSendNotification);
+    latticeYLabel.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(latticeYLabel);
+
+    centsFactor3Label.setFont(labelFont);
+    centsFactor3Label.setText("Perfect fifth (cents)", juce::dontSendNotification);
+    centsFactor3Label.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(centsFactor3Label);
+
+    centsFactor5Label.setFont(labelFont);
+    centsFactor5Label.setText("Major third (cents)", juce::dontSendNotification);
+    centsFactor5Label.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(centsFactor5Label);
+
+    toleranceLabel.setFont(labelFont);
+    toleranceLabel.setText("Tolerance (cents)", juce::dontSendNotification);
+    toleranceLabel.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(toleranceLabel);
+
+    factor3ToFactor5Label.setFont(labelFont);
+    factor3ToFactor5Label.setText("Set major third in terms of fifths", juce::dontSendNotification);
+    factor3ToFactor5Label.setJustificationType(juce::Justification::right);
+   // addAndMakeVisible(factor3ToFactor5Label);
+
+    factor3ToFactor5InputLabel.setFont(labelFont);
+    factor3ToFactor5InputLabel.setText("4", juce::dontSendNotification);
+    initInputLabel(factor3ToFactor5InputLabel);
+   // addAndMakeVisible(factor3ToFactor5InputLabel);
+
+    latticeXSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    latticeXSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(latticeXSlider);
+
+    latticeYSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    latticeYSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(latticeYSlider);
+
+    centsFactor3Slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    centsFactor3Slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(centsFactor3Slider);
+
+    centsFactor5Slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    centsFactor5Slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(centsFactor5Slider);
+
+    toleranceSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    toleranceSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(toleranceSlider);
+
+    latticeXAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "LATTICE_X", latticeXSlider);
+    latticeYAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "LATTICE_Y", latticeYSlider);
+    centsFactor3Attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "CENTS_FACTOR_3", centsFactor3Slider);
+    centsFactor5Attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "CENTS_FACTOR_5", centsFactor5Slider);
+    toleranceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "CENTS_TOLERANCE", toleranceSlider);
+
+    float centsFactor3 = audioProcessor.apvts.getRawParameterValue("CENTS_FACTOR_3")->load();
+    float centsFactor5 = audioProcessor.apvts.getRawParameterValue("CENTS_FACTOR_5")->load();
+    int latticeX = std::round(audioProcessor.apvts.getRawParameterValue("LATTICE_X")->load());
+    int latticeY = std::round(audioProcessor.apvts.getRawParameterValue("LATTICE_Y")->load());
+    float tolerance = audioProcessor.apvts.getRawParameterValue("CENTS_TOLERANCE")->load();
+
+    int size = 70;
+    for (int x = 0; x <= 8; x++)
+    {
+        for (int y = 0; y <= 12; y++)
+        {
+            int xPos = 10 + x * size;
+            int yPos = 10 + y * size;
+            int factor3 = -(y - 6);
+            int factor5 = x - 4;
+            PitchClassTile* newTile = new PitchClassTile(
+                factor3 + latticeY, factor5 + latticeX, centsFactor3 * 0.01, centsFactor5 * 0.01, tolerance * 0.01);
+            newTile->setBounds(xPos, yPos, size, size);
+            tiles.push_back(std::unique_ptr<PitchClassTile>(newTile));
+            addAndMakeVisible(*newTile);
+        }
+    }
+
+    latticeXSlider.addListener(this);
+    latticeYSlider.addListener(this);
+    centsFactor3Slider.addListener(this);
+    centsFactor5Slider.addListener(this);
+    toleranceSlider.addListener(this);
 
     startTimerHz(60);
 }
 
-void PluginEditor::remakeTiles(double semisFactor3, double semisFactor5, double tolerance)
+void PluginEditor::sliderValueChanged(juce::Slider* slider)
 {
+    float centsFactor3 = centsFactor3Slider.getValue();
+    float centsFactor5 = centsFactor5Slider.getValue();
+    int latticeX = latticeXSlider.getValue();
+    int latticeY = latticeYSlider.getValue();
+    float tolerance = toleranceSlider.getValue();
+    factor3Offset = latticeY;
+    factor5Offset = latticeX;
     for (auto& tile : tiles)
     {
-        tile->setTuning(semisFactor3, semisFactor5, tolerance);
+        tile->setTuning(factor3Offset, factor5Offset, centsFactor3 * 0.01, centsFactor5 * 0.01, tolerance * 0.01);
     }
+}
+
+void PluginEditor::initInputLabel(juce::Label& label)
+{
+    label.setEditable(true);
+    label.setColour(juce::Label::backgroundColourId, juce::Colours::white);
+    label.setColour(juce::Label::textColourId, juce::Colours::black);
+    label.setColour(juce::Label::textWhenEditingColourId, juce::Colours::black);
+    label.setJustificationType(juce::Justification::left);
+}
+
+void PluginEditor::resized()
+{
+    int xStart = 660;
+    //logBox.setBounds(10, 10, getWidth() - 20, 190);
+    // This is generally where you'll want to lay out the positions of any
+    // subcomponents in your editor..
+   // tuningMenu.setBounds(xStart, 10, 200, 30);
+
+    latticeYLabel.setBounds(xStart, 150, 200, 30);
+    latticeXLabel.setBounds(xStart, 250, 200, 30);
+    centsFactor3Label.setBounds(xStart, 350, 200, 30);
+    centsFactor5Label.setBounds(xStart, 450, 200, 30);
+    toleranceLabel.setBounds(xStart, 550, 200, 30);
+
+    latticeYSlider.setBounds(xStart, 200, 200, 30);
+    latticeXSlider.setBounds(xStart, 300, 200, 30);
+    centsFactor3Slider.setBounds(xStart, 400, 200, 30);
+    centsFactor5Slider.setBounds(xStart, 500, 200, 30);
+    toleranceSlider.setBounds(xStart, 600, 200, 30);
+
+    factor3ToFactor5Label.setBounds(xStart, 700, 120, 30);
+    factor3ToFactor5InputLabel.setBounds(xStart + 120, 700, 80, 30);
 }
 
 PluginEditor::~PluginEditor()
@@ -158,8 +282,15 @@ void PluginEditor::noteReleased(juce::MPENote mpeNote)
 
     Pitch pitch = Pitch::fromFreqHz(mpeNote.getFrequencyInHertz());
 
-    heldPitches.erase(pitch);
     mpeNotes.erase(mpeNote);
+    for (const auto& mpeNote : mpeNotes) {
+        Pitch mpePitch = Pitch::fromFreqHz(mpeNotes.find(mpeNote)->getFrequencyInHertz());
+        if (pitch == mpePitch) {
+            return;
+        }
+    }
+
+    heldPitches.erase(pitch);
 }
 void PluginEditor::zoneLayoutChanged()
 {
@@ -174,10 +305,6 @@ void PluginEditor::updateTiles()
     {
         maxPitch = *heldPitches.rbegin();
         minPitch = *heldPitches.begin();
-    }
-
-    for (auto& it : heldPitches) {
-     //   DBG(it.getMidiPitch());
     }
 
     double markerIntensityChange = 0.15;
@@ -221,20 +348,26 @@ void PluginEditor::tuningChanged()
     switch (tuningMenu.getSelectedId())
     {
     case 1:
-        remakeTiles(7, 4, 0.5);
+        setTuning(700.f, 400.f);
         break;
     case 2:
-        remakeTiles(6.967742, 3.870968, 0.01);
+        setTuning(696.7742, 387.0968);
         break;
     case 3:
-        remakeTiles(7.018868, 3.849057, 0.01);
+        setTuning(701.8868, 384.9057);
         break;
     case 4:
-        remakeTiles(7.01955, 3.86314, 0.01);
+        setTuning(701.955, 386.314);
         break;
     default:
-        remakeTiles(7, 4, 0.5);
+        setTuning(700.f, 400.f);
     }
+}
+
+void PluginEditor::setTuning(double semisFactor3, double semisFactor5)
+{
+    centsFactor3Slider.setValue(semisFactor3);
+    centsFactor5Slider.setValue(semisFactor5);
 }
 
 //==============================================================================
@@ -242,12 +375,4 @@ void PluginEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-}
-
-void PluginEditor::resized()
-{
-    //logBox.setBounds(10, 10, getWidth() - 20, 190);
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-    tuningMenu.setBounds(900, 10, 170, 30);
 }
