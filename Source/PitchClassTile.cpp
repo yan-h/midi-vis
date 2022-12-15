@@ -27,29 +27,41 @@ const int semitonesFontSize = 20;
 #endif
 }
 
-PitchClassTile::PitchClassTile(int factor3Base, int factor5Base, double semisFactor3, double semisFactor5, double tolerance) :
+PitchClassTile::PitchClassTile(
+	int factor3Base, int factor5Base, int factor7Base, 
+	double semisFactor3, double semisFactor5, double semisFactor7,
+	double tolerance) :
 	pitchClass(0),
 	factor3Base(factor3Base),
-	factor5Base(factor5Base)
+	factor5Base(factor5Base),
+	factor7Base(factor7Base)
 {
-	setTuning(0, 0, semisFactor3, semisFactor5, tolerance);
+	setTuning(0, 0, 0, semisFactor3, semisFactor5, semisFactor7, tolerance);
 }
 
-void PitchClassTile::setTuning(int factor3Offset, int factor5Offset, double semisFactor3, double semisFactor5, double tolerance)
+void PitchClassTile::setTuning(
+	int factor3Offset, int factor5Offset, int factor7Offset,
+	double semisFactor3, double semisFactor5, double semisFactor7,
+	double tolerance)
 {
 	this->factor3Offset = factor3Offset;
 	this->factor5Offset = factor5Offset;
+	this->factor7Offset = factor7Offset;
 
 	int factor3 = factor3Base + factor3Offset;
 	int factor5 = factor5Base + factor5Offset;
+	int factor7 = factor7Base + factor7Offset;
 
 	this->tolerance = tolerance;
 
-	pitchClass = PitchClass(Pitch(semisFactor3 * factor3 + semisFactor5 * factor5));
+	pitchClass = PitchClass(Pitch(semisFactor3 * factor3 + semisFactor5 * factor5 + semisFactor7 * factor7));
 	needsRepaint = true;
 
+	meantone = fabs(fmod(semisFactor3 * 4, 12.0) - semisFactor5) < 0.00001;
+	septimalMeantone = fabs(fmod(semisFactor3 * 10, 12.0) - semisFactor7) < 0.00001;
+
 	// plus one because we start at C, not F
-	int numFifths = 1 + factor3 + 4 * factor5;
+	int numFifths = 1 + factor3 + 4 * factor5 - 2 * factor7;
 	int letterNameIndex = numFifths % 7;
 	if (letterNameIndex < 0) letterNameIndex += 7;
 	int semiOffset = numFifths / 7;
@@ -69,7 +81,7 @@ void PitchClassTile::setTuning(int factor3Offset, int factor5Offset, double semi
 	}
 
 	syntonicCommas = "";
-	if (fabs(fmod(semisFactor3 * 4, 12.0) - semisFactor5) > 0.000001)
+	if (!meantone)
 	{
 		int syntonicCommaOffset = -factor5;
 
@@ -100,6 +112,11 @@ juce::Colour PitchClassTile::pitchColor(Pitch pitch, double intensity)
 
 void PitchClassTile::paint(juce::Graphics& g)
 {
+	if (factor7Base != 0 && septimalMeantone)
+	{
+		return;
+	}
+
 	juce::Rectangle<int> bounds = g.getClipBounds();
 	double width = bounds.getWidth();
 	double height = bounds.getHeight();
@@ -151,9 +168,9 @@ void PitchClassTile::paint(juce::Graphics& g)
 		g.fillRect(juce::Rectangle<int>(bounds.getWidth(), bounds.getHeight()));
 	}
 
-	int ringOffset1 = borderSize + (width * 0.07);
+	int ringOffset1 = borderSize + 5;
 	juce::Rectangle outerRectangle = juce::Rectangle<int>(ringOffset1, ringOffset1, bounds.getWidth() - ringOffset1 * 2, bounds.getHeight() - ringOffset1 * 2);
-	int ringOffset2 = borderSize + (width * 0.14);
+	int ringOffset2 = borderSize + 10;
 	juce::Rectangle innerRectangle = juce::Rectangle<int>(ringOffset2, ringOffset2, bounds.getWidth() - ringOffset2 * 2, bounds.getHeight() - ringOffset2 * 2);
 
 	// bottom note overlay
@@ -179,37 +196,40 @@ void PitchClassTile::paint(juce::Graphics& g)
 	g.fillRect(juce::Rectangle<int>(bounds.getWidth() - borderSize, borderSize, borderSize, bounds.getHeight() - borderSize * 2));
 	g.fillRect(juce::Rectangle<int>(0, bounds.getHeight() - borderSize, bounds.getWidth(), borderSize));
 
-	const int noteNameWidth = width * 0.5;
+	const int noteNameWidth = width * 0.35;
 	const int noteNameHeight = height * 0.7;
 
-
 	g.setColour(getLookAndFeel().findColour(juce::TextEditor::textColourId));
+
 	// Note name text
-	g.setFont(noteNameHeight * 0.75);
-	g.drawText(pitchName,
-		juce::Rectangle<int>(0, 0, noteNameWidth, noteNameHeight),
-		juce::Justification::centredRight,
-		false);
+	if (factor7Base == 0)
+	{
+		g.setFont(noteNameHeight * 0.6);
+		g.drawText(pitchName,
+			juce::Rectangle<int>(0, 0, noteNameWidth, noteNameHeight),
+			juce::Justification::centredRight,
+			false);
 
-	g.setFont(noteNameHeight * 0.75 * 0.55);
-	g.drawText(accidentals,
-		juce::Rectangle<int>(noteNameWidth + 2, noteNameHeight * 0.05, noteNameWidth - 2, noteNameHeight * 0.5),
-		juce::Justification::bottomLeft,
-		false);
+		g.setFont(noteNameHeight * 0.6 * 0.55);
+		g.drawText(accidentals,
+			juce::Rectangle<int>(noteNameWidth + 2, noteNameHeight * 0.05, noteNameWidth - 2, noteNameHeight * 0.5),
+			juce::Justification::bottomLeft,
+			false);
 
-	g.drawText(syntonicCommas,
-		juce::Rectangle<int>(noteNameWidth + 2, noteNameHeight * 0.45, noteNameWidth - 2, noteNameHeight * 0.5),
-		juce::Justification::topLeft,
-		false);
+		g.drawText(syntonicCommas,
+			juce::Rectangle<int>(noteNameWidth + 2, noteNameHeight * 0.45, noteNameWidth - 2, noteNameHeight * 0.5),
+			juce::Justification::topLeft,
+			false);
 
-	// Semitones text
-	g.setFont(noteNameHeight * 0.4);
-	std::stringstream stream;
-	stream << std::fixed << std::setprecision(2) << (double)pitchClass.getCents() / 100.f;
-	g.drawText(stream.str(), 
-		juce::Rectangle<int>(0,  noteNameHeight - height * 0.1, width, height - noteNameHeight),
-		juce::Justification::centredTop, 
-		false);
+		// Semitones text
+		g.setFont(noteNameHeight * 0.35);
+		std::stringstream stream;
+		stream << std::fixed << std::setprecision(2) << (double)pitchClass.getCents() / 100.f;
+		g.drawText(stream.str(), 
+			juce::Rectangle<int>(5,  noteNameHeight - height * 0.1, width - 25, height - noteNameHeight),
+			juce::Justification::bottomLeft, 
+			false);
+	}
 }
 
 void PitchClassTile::updatePitchIntensities(const std::map<Pitch, PitchInfo>& allPitchInfos)

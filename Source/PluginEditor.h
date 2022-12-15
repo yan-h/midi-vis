@@ -48,7 +48,6 @@ public:
     void updateTiles();
     void timerCallback();
 private:
-    void setTuning(double, double);
     void handleLogMessage(const LogMessage*);
     void updateNote(const juce::MPENote&);
     void initInputLabel(juce::Label&);
@@ -75,8 +74,10 @@ private:
 
     juce::Label latticeXLabel;
     juce::Label latticeYLabel;
+    juce::Label latticeZLabel;
     juce::Label centsFactor3Label;
     juce::Label centsFactor5Label;
+    juce::Label centsFactor7Label;
     juce::Label toleranceLabel;
 
     juce::Label factor3ToFactor5Label;
@@ -84,20 +85,19 @@ private:
 
     juce::Slider latticeXSlider;
     juce::Slider latticeYSlider;
+    juce::Slider latticeZSlider;
     juce::Slider centsFactor3Slider;
     juce::Slider centsFactor5Slider;
+    juce::Slider centsFactor7Slider;
     juce::Slider toleranceSlider;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> latticeXAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> latticeYAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> latticeZAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> centsFactor3Attachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> centsFactor5Attachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> centsFactor7Attachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> toleranceAttachment;
 
-    void tuningChanged();
-
     virtual void sliderValueChanged(juce::Slider* slider) override;
-
-    int factor3Offset;
-    int factor5Offset;
 };

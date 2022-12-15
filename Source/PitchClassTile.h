@@ -12,8 +12,8 @@ class PitchClassTile :
 	public juce::Component
 {
 public:
-	PitchClassTile(int, int, double, double, double);
-	void setTuning(int, int, double, double, double);
+	PitchClassTile(int, int, int, double, double, double, double);
+	void setTuning(int, int, int, double, double, double, double);
 	void paint(juce::Graphics& g) override;
 	void updatePitchIntensities(const std::map<Pitch, PitchInfo>&);
 	void timerUpdate();
@@ -28,7 +28,11 @@ private:
 	juce::String syntonicCommas;
 	int factor3Base;
 	int factor5Base;
+	int factor7Base;
 	int factor3Offset;
 	int factor5Offset;
+	int factor7Offset;
+	bool septimalMeantone;
+	bool meantone;
 };
 

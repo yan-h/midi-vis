@@ -37,11 +37,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         "CENTS_FACTOR_5", "M3 cents", 380.f, 420.f, 400.f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "CENTS_TOLERANCE", "Tolerance", 0.1f, 50.f, 0.1f));
+        "CENTS_FACTOR_7", "H7 cents", 960.f, 1000.f, 1000.f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "CENTS_TOLERANCE", "Tolerance", 1.0f, 50.f, 0.1f));
     params.push_back(std::make_unique<juce::AudioParameterInt>(
-        "LATTICE_X", "X offset", -20, 20, 0));
+        "LATTICE_X", "X offset", -10, 10, 0));
     params.push_back(std::make_unique<juce::AudioParameterInt>(
-        "LATTICE_Y", "Y offset", -20, 20, 0));
+        "LATTICE_Y", "Y offset", -10, 10, 0));
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+        "LATTICE_Z", "Z offset", -10, 10, 0));
     return { params.begin(), params.end() };
 }
 

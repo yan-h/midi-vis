@@ -18,9 +18,7 @@
 PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrument):
     AudioProcessorEditor (&p), 
     audioProcessor (p), 
-    mpeInstrument(mpeInstrument),
-    factor3Offset(0),
-    factor5Offset(0)
+    mpeInstrument(mpeInstrument)
 {
     getLookAndFeel().setDefaultSansSerifTypefaceName("Helvetica");
 
@@ -66,6 +64,11 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     latticeYLabel.setJustificationType(juce::Justification::left);
     addAndMakeVisible(latticeYLabel);
 
+    latticeZLabel.setFont(labelFont);
+    latticeZLabel.setText("Harmonic seventh offset", juce::dontSendNotification);
+    latticeZLabel.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(latticeZLabel);
+
     centsFactor3Label.setFont(labelFont);
     centsFactor3Label.setText("Perfect fifth (cents)", juce::dontSendNotification);
     centsFactor3Label.setJustificationType(juce::Justification::left);
@@ -75,6 +78,11 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     centsFactor5Label.setText("Major third (cents)", juce::dontSendNotification);
     centsFactor5Label.setJustificationType(juce::Justification::left);
     addAndMakeVisible(centsFactor5Label);
+
+    centsFactor7Label.setFont(labelFont);
+    centsFactor7Label.setText("Harmonic seventh (cents)", juce::dontSendNotification);
+    centsFactor7Label.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(centsFactor7Label);
 
     toleranceLabel.setFont(labelFont);
     toleranceLabel.setText("Tolerance (cents)", juce::dontSendNotification);
@@ -99,6 +107,10 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     latticeYSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
     addAndMakeVisible(latticeYSlider);
 
+    latticeZSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    latticeZSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(latticeZSlider);
+
     centsFactor3Slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
     centsFactor3Slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
     addAndMakeVisible(centsFactor3Slider);
@@ -106,6 +118,10 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
     centsFactor5Slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
     centsFactor5Slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
     addAndMakeVisible(centsFactor5Slider);
+
+    centsFactor7Slider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    centsFactor7Slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
+    addAndMakeVisible(centsFactor7Slider);
 
     toleranceSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
     toleranceSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 50);
@@ -115,20 +131,28 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
         audioProcessor.apvts, "LATTICE_X", latticeXSlider);
     latticeYAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "LATTICE_Y", latticeYSlider);
+    latticeZAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "LATTICE_Z", latticeZSlider);
     centsFactor3Attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "CENTS_FACTOR_3", centsFactor3Slider);
     centsFactor5Attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "CENTS_FACTOR_5", centsFactor5Slider);
+    centsFactor7Attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.apvts, "CENTS_FACTOR_7", centsFactor7Slider);
     toleranceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         audioProcessor.apvts, "CENTS_TOLERANCE", toleranceSlider);
 
     float centsFactor3 = audioProcessor.apvts.getRawParameterValue("CENTS_FACTOR_3")->load();
     float centsFactor5 = audioProcessor.apvts.getRawParameterValue("CENTS_FACTOR_5")->load();
+    float centsFactor7 = audioProcessor.apvts.getRawParameterValue("CENTS_FACTOR_7")->load();
     int latticeX = std::round(audioProcessor.apvts.getRawParameterValue("LATTICE_X")->load());
     int latticeY = std::round(audioProcessor.apvts.getRawParameterValue("LATTICE_Y")->load());
+    int latticeZ = std::round(audioProcessor.apvts.getRawParameterValue("LATTICE_Z")->load());
     float tolerance = audioProcessor.apvts.getRawParameterValue("CENTS_TOLERANCE")->load();
 
     int size = 70;
+    int smallWidth = 24;
+    int smallHeight = 24;
     for (int x = 0; x <= 8; x++)
     {
         for (int y = 0; y <= 12; y++)
@@ -137,18 +161,40 @@ PluginEditor::PluginEditor (PluginProcessor& p, juce::MPEInstrument& mpeInstrume
             int yPos = 10 + y * size;
             int factor3 = -(y - 6);
             int factor5 = x - 4;
+
             PitchClassTile* newTile = new PitchClassTile(
-                factor3 + latticeY, factor5 + latticeX, centsFactor3 * 0.01, centsFactor5 * 0.01, tolerance * 0.01);
+                factor3 + latticeY, factor5 + latticeX, 0, 
+                centsFactor3 * 0.01, centsFactor5 * 0.01, centsFactor7 * 0.01, 
+                tolerance * 0.01);
             newTile->setBounds(xPos, yPos, size, size);
+
+            PitchClassTile* upTile = new PitchClassTile(
+                factor3 + latticeY, factor5 + latticeX, 1,
+                centsFactor3 * 0.01, centsFactor5 * 0.01, centsFactor7 * 0.01,
+                tolerance * 0.01);
+            upTile->setBounds(xPos + size - smallWidth, yPos, smallWidth, smallHeight);
+
+            PitchClassTile* downTile = new PitchClassTile(
+                factor3 + latticeY, factor5 + latticeX, -1,
+                centsFactor3 * 0.01, centsFactor5 * 0.01, centsFactor7 * 0.01,
+                tolerance * 0.01);
+            downTile->setBounds(xPos + size - smallWidth, yPos + size - smallHeight, smallWidth, smallHeight);
+
             tiles.push_back(std::unique_ptr<PitchClassTile>(newTile));
+            tiles.push_back(std::unique_ptr<PitchClassTile>(upTile));
+            tiles.push_back(std::unique_ptr<PitchClassTile>(downTile));
             addAndMakeVisible(*newTile);
+            addAndMakeVisible(*upTile);
+            addAndMakeVisible(*downTile);
         }
     }
 
     latticeXSlider.addListener(this);
     latticeYSlider.addListener(this);
+    latticeZSlider.addListener(this);
     centsFactor3Slider.addListener(this);
     centsFactor5Slider.addListener(this);
+    centsFactor7Slider.addListener(this);
     toleranceSlider.addListener(this);
 
     startTimerHz(60);
@@ -158,14 +204,17 @@ void PluginEditor::sliderValueChanged(juce::Slider* slider)
 {
     float centsFactor3 = centsFactor3Slider.getValue();
     float centsFactor5 = centsFactor5Slider.getValue();
+    float centsFactor7 = centsFactor7Slider.getValue();
     int latticeX = latticeXSlider.getValue();
     int latticeY = latticeYSlider.getValue();
+    int latticeZ = latticeZSlider.getValue();
     float tolerance = toleranceSlider.getValue();
-    factor3Offset = latticeY;
-    factor5Offset = latticeX;
     for (auto& tile : tiles)
     {
-        tile->setTuning(factor3Offset, factor5Offset, centsFactor3 * 0.01, centsFactor5 * 0.01, tolerance * 0.01);
+        tile->setTuning(
+            latticeY, latticeX, latticeZ,
+            centsFactor3 * 0.01, centsFactor5 * 0.01, centsFactor7 * 0.01, 
+            tolerance * 0.01);
     }
 }
 
@@ -186,20 +235,26 @@ void PluginEditor::resized()
     // subcomponents in your editor..
    // tuningMenu.setBounds(xStart, 10, 200, 30);
 
-    latticeYLabel.setBounds(xStart, 150, 200, 30);
-    latticeXLabel.setBounds(xStart, 250, 200, 30);
-    centsFactor3Label.setBounds(xStart, 350, 200, 30);
-    centsFactor5Label.setBounds(xStart, 450, 200, 30);
-    toleranceLabel.setBounds(xStart, 550, 200, 30);
+    latticeYLabel.setBounds(xStart, 100, 200, 30);
+    latticeYSlider.setBounds(xStart, 130, 200, 30);
 
-    latticeYSlider.setBounds(xStart, 200, 200, 30);
-    latticeXSlider.setBounds(xStart, 300, 200, 30);
-    centsFactor3Slider.setBounds(xStart, 400, 200, 30);
-    centsFactor5Slider.setBounds(xStart, 500, 200, 30);
-    toleranceSlider.setBounds(xStart, 600, 200, 30);
+    latticeXLabel.setBounds(xStart, 180, 200, 30);
+    latticeXSlider.setBounds(xStart, 210, 200, 30);
 
-    factor3ToFactor5Label.setBounds(xStart, 700, 120, 30);
-    factor3ToFactor5InputLabel.setBounds(xStart + 120, 700, 80, 30);
+    latticeZLabel.setBounds(xStart, 260, 200, 30);
+    latticeZSlider.setBounds(xStart, 290, 200, 30);
+
+    centsFactor3Label.setBounds(xStart, 340, 200, 30);
+    centsFactor3Slider.setBounds(xStart, 370, 200, 30);
+
+    centsFactor5Label.setBounds(xStart, 420, 200, 30);
+    centsFactor5Slider.setBounds(xStart, 450, 200, 30);
+
+    centsFactor7Label.setBounds(xStart, 500, 200, 30);
+    centsFactor7Slider.setBounds(xStart, 530, 200, 30);
+
+    toleranceLabel.setBounds(xStart, 580, 200, 30);
+    toleranceSlider.setBounds(xStart, 610, 200, 30);
 }
 
 PluginEditor::~PluginEditor()
@@ -341,33 +396,6 @@ void PluginEditor::updateTiles()
     {
         pitchClassTile->updatePitchIntensities(pitchInfos);
     }
-}
-
-void PluginEditor::tuningChanged()
-{
-    switch (tuningMenu.getSelectedId())
-    {
-    case 1:
-        setTuning(700.f, 400.f);
-        break;
-    case 2:
-        setTuning(696.7742, 387.0968);
-        break;
-    case 3:
-        setTuning(701.8868, 384.9057);
-        break;
-    case 4:
-        setTuning(701.955, 386.314);
-        break;
-    default:
-        setTuning(700.f, 400.f);
-    }
-}
-
-void PluginEditor::setTuning(double semisFactor3, double semisFactor5)
-{
-    centsFactor3Slider.setValue(semisFactor3);
-    centsFactor5Slider.setValue(semisFactor5);
 }
 
 //==============================================================================
