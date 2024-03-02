@@ -1,5 +1,7 @@
 # midi-vis
 
+Important: this has been rewritten and upgraded in Rust (https://github.com/yan-h/midi_lattice)
+
 Tonnetz visualizer VST. Supports multiple tunings. Somewhat janky.
 
 Highlights lowest and highest notes being played (lowest = thick outer outline, highest = bright inner outline)
